@@ -1,0 +1,1 @@
+con ese big data y SQLito ENSEÑAME EL PYTHON A VER SI ES BONITPO

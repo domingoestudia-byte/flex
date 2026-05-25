@@ -1,56 +1,19 @@
-CREATE OR REPLACE FUNCTION public.mi_rol()
-RETURNS text
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT rol
-  FROM public.perfiles
-  WHERE id = auth.uid()
-$$;
 
----------------------------------------------------
--- ADMIN Y STAFF VEN TODOS LOS PEDIDOS
----------------------------------------------------
-
-CREATE POLICY "pedidos: admin y staff ven todos"
-ON public.pedidos
+CREATE POLICY "cliente: ver reserva pendiente"
+ON public.reservas
 FOR SELECT
 USING (
-    public.mi_rol() IN ('admin', 'staff')
+   cliente_id = auth.uid() 
 );
 
----------------------------------------------------
--- CLIENTES VEN SOLO SUS PEDIDOS
----------------------------------------------------
 
--- CREATE POLICY "pedidos: cliente ve sus pedidos"
--- ON public.pedidos
--- FOR SELECT
--- USING (
---     public.mi_rol() = 'client'
--- );
 
--- veria todos los pedidos del rol client 
-
-CREATE POLICY "pedidos: cliente ve sus pedidos"
-ON public.pedidos
-FOR SELECT
-USING (
-    cliente_id = auth.uid()
-);
-
----------------------------------------------------
--- ADMIN PUEDE EDITAR PEDIDOS
----------------------------------------------------
-
-CREATE POLICY "pedidos: admin editar pedido"
-ON public.pedidos
+CREATE POLICY "cancelar reserva pendiente"
+ON public.reservas
 FOR UPDATE
 USING (
-    public.mi_rol() = 'admin'
+    cliente_id = auth.uid() AND reservas.estado = "pendiente"
 )
 WITH CHECK (
-    public.mi_rol() = 'admin'
+    cliente_id = auth.uid()
 );

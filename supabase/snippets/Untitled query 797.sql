@@ -1,0 +1,1 @@
+set request.jwt.claims = '{"sub":"<UUID-del-cliente>","role":"authenticated"}';
