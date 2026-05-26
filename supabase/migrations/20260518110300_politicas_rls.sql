@@ -36,14 +36,15 @@ create policy "admin: lectura total perfiles"
 -- El trigger de registro (apunte 01) necesita insertar con service_role,
 -- que ignora RLS. No necesitamos política de INSERT para clientes.
 
--- Todos los usuarios autenticados pueden VER mesas y salas (para la UI)
+-- Todos los usuarios autenticados pueden VER mesas (para la UI)
 create policy "autenticado: ver mesas"
   on public.mesas for select
   using ( auth.role() = 'authenticated' );
 
-create policy "autenticado: ver salas vip"
+-- Las salas VIP activas son visibles en la pantalla publica inicial.
+create policy "publico: ver salas vip activas"
   on public.salas_vip for select
-  using ( auth.role() = 'authenticated' );
+  using ( activa = true );
 
 -- Solo admin puede crear/modificar/borrar mesas y salas
 create policy "admin: gestionar mesas"
