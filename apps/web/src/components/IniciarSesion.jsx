@@ -5,7 +5,7 @@ import { useSesionStore } from '@/store/sesionStore'
 import { createClient } from '@/lib/supabase/client'
 
 export function IniciarSesion() {
-    const { setSesion, limpiarSesion } = useSesionStore()
+    const { setSesion, limpiarSesion} = useSesionStore()
 
     useEffect(() => {
 
@@ -15,7 +15,8 @@ export function IniciarSesion() {
         supabase.auth.getSession().then(async ({ data: { session } }) => {
             if (!session) { limpiarSesion(); return }
 
-            const { data: perfil } = await supabase
+            const cliente = createClient()
+            const { data: perfil } = await cliente
                 .from('perfiles')
                 .select('rol')
                 .eq('id', session.user.id)
@@ -23,13 +24,13 @@ export function IniciarSesion() {
 
             setSesion(session.user, perfil?.rol ?? 'cliente')
         })
-
-        // Escucha cambios de sesión (login/logout en otra pestaña)
+        
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (evento, session) => {
+            async (_evento, session) => {
                 if (!session) { limpiarSesion(); return }
 
-                const { data: perfil } = await supabase
+                const cliente = createClient()
+                const { data: perfil } = await cliente
                     .from('perfiles')
                     .select('rol')
                     .eq('id', session.user.id)

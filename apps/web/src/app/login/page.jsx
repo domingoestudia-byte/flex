@@ -6,13 +6,6 @@ import Link from 'next/link'
 import FlexLogo from '@/components/FlexLogo'
 import { createClient } from '@/lib/supabase/client'
 
-const RUTA_POR_ROL = {
-  cliente: '/',
-  staff:   '/staff',
-  portero: '/porteros',
-  admin:   '/admin',
-}
-
 export default function PaginaLogin() {
   const router = useRouter()
   const [email, setEmail]       = useState('')
@@ -26,24 +19,16 @@ export default function PaginaLogin() {
     setCargando(true)
 
     const supabase = createClient()
+    const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
 
-    const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password })
+    setCargando(false)
 
     if (authError) {
-      setCargando(false)
       setError('Email o contraseña incorrectos.')
       return
     }
 
-    // Obtener rol para redirigir a la ruta correcta
-    const { data: perfil } = await supabase
-      .from('perfiles')
-      .select('rol')
-      .eq('id', data.user.id)
-      .single()
-
-    const rol = perfil?.rol ?? 'cliente'
-    router.push(RUTA_POR_ROL[rol] ?? '/')
+    router.push('/')
   }
 
   return (

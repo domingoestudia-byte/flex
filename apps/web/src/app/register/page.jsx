@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import FlexLogo from '@/components/FlexLogo'
@@ -15,8 +15,8 @@ export default function PaginaRegister() {
 
 
   async function handleSubmit(e) {
-    const supabase = createClient()
     e.preventDefault()
+    const supabase = createClient()
     setError('')
 
     if (form.password !== form.confirmar) {
@@ -33,7 +33,7 @@ export default function PaginaRegister() {
     const { error: authError } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
-      options: { data: { nombre: form.nombre } },  // metadatos para el trigger
+      options: { data: { nombre: form.nombre } },
     })
 
     setCargando(false)
