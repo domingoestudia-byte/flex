@@ -1,18 +1,19 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 import { useCarritoStore } from '@/store/carritoStore'
+import { iniciarPagoPedido } from '@/lib/actions/pedidos'
 import { ShoppingCart, X } from 'lucide-react'
 
 export default function CarritoDrawer({ mesas = [] }) {
+  const router = useRouter()
   const { items, eliminarItem, vaciarCarrito } = useCarritoStore()
 
   const totalItems = useCarritoStore((s) => s.items.reduce((acc, i) => acc + i.cantidad, 0))
   const total      = useCarritoStore((s) => s.items.reduce((acc, i) => acc + i.precio * i.cantidad, 0))
 
   const [carritoAbierto, setCarritoAbierto] = useState(false)
-  const [pedidoEnviado, setPedidoEnviado]   = useState(false)
   const [modalMesa, setModalMesa]           = useState(false)
   const [mesaSel, setMesaSel]               = useState(null)
   const [enviando, setEnviando]             = useState(false)
@@ -26,50 +27,16 @@ export default function CarritoDrawer({ mesas = [] }) {
     setEnviando(true)
     setError(null)
 
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-
-    const totalPedido = items.reduce((sum, i) => sum + i.precio * i.cantidad, 0)
-
-    const { data: pedido, error: pedidoError } = await supabase
-      .from('pedidos')
-      .insert({ mesa_id: mesaSel.id, cliente_id: user?.id ?? null, estado: 'pendiente', total: totalPedido })
-      .select('id')
-      .single()
-
-    if (pedidoError) {
-      setError('No se pudo crear el pedido. Inténtalo de nuevo.')
+    try {
+      // Crea el pedido en la DB y la sesión de pago en Stripe, y nos
+      // devuelve la URL a la que redirigir al usuario para que pague
+      const url = await iniciarPagoPedido({ mesaId: mesaSel.id, items })
+      vaciarCarrito()
+      router.push(url)
+    } catch (err) {
+      setError(err.message ?? 'No se pudo crear el pedido. Inténtalo de nuevo.')
       setEnviando(false)
-      return
     }
-
-    const { error: itemsError } = await supabase
-      .from('pedido_items')
-      .insert(
-        items.map((i) => ({
-          pedido_id:   pedido.id,
-          producto_id: i.id,
-          cantidad:    i.cantidad,
-          precio_unit: i.precio,
-        }))
-      )
-
-    if (itemsError) {
-      setError('El pedido se creó pero hubo un problema al guardar los productos.')
-      setEnviando(false)
-      return
-    }
-
-    setModalMesa(false)
-    setPedidoEnviado(true)
-    vaciarCarrito()
-    setMesaSel(null)
-    setEnviando(false)
-
-    setTimeout(() => {
-      setPedidoEnviado(false)
-      setCarritoAbierto(false)
-    }, 3000)
   }
 
   return (
@@ -110,12 +77,7 @@ export default function CarritoDrawer({ mesas = [] }) {
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 py-4">
-          {pedidoEnviado && (
-            <div className="bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-sm rounded-lg px-4 py-3 mb-4">
-              ¡Pedido enviado! Llega en 10–15 min.
-            </div>
-          )}
-          {items.length === 0 && !pedidoEnviado ? (
+          {items.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
               <ShoppingCart size={40} className="text-zinc-700" />
               <p className="text-zinc-500 text-sm">Tu pedido está vacío</p>
@@ -215,7 +177,7 @@ export default function CarritoDrawer({ mesas = [] }) {
                 disabled={!mesaSel || enviando}
                 className="flex-1 py-2.5 bg-gold-500 hover:bg-gold-600 disabled:opacity-40 disabled:cursor-not-allowed text-zinc-950 font-bold rounded-xl text-sm transition-colors"
               >
-                {enviando ? 'Enviando…' : mesaSel ? `Mesa ${mesaSel.numero}` : 'Confirmar'}
+                {enviando ? 'Redirigiendo a pago…' : mesaSel ? `Pagar · Mesa ${mesaSel.numero}` : 'Confirmar'}
               </button>
             </div>
           </div>

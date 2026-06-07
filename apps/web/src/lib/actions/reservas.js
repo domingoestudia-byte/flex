@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { crearCheckout } from '@/lib/pagos'
 
 export async function crearReserva({ sala_id, fecha, hora, duracionHoras }) {
   const supabase = await createClient()
@@ -20,15 +21,41 @@ export async function crearReserva({ sala_id, fecha, hora, duracionHoras }) {
 
   const total = sala ? sala.precio_hora * duracionHoras : 0
 
-  const { error } = await supabase.from('reservas').insert({
-    sala_id,
-    cliente_id: user.id,
-    inicio:     inicio.toISOString(),
-    fin:        fin.toISOString(),
-    estado:     'pendiente',
-    total,
-  })
+  const { data: reserva, error } = await supabase
+    .from('reservas')
+    .insert({
+      sala_id,
+      cliente_id: user.id,
+      inicio:     inicio.toISOString(),
+      fin:        fin.toISOString(),
+      estado:     'pendiente',
+      total,
+    })
+    .select()
+    .single()
 
   if (error) throw new Error(error.message)
   revalidatePath('/mi-area')
+  return reserva
+}
+
+// Crea la reserva y, a continuación, la sesión de pago en Stripe
+export async function iniciarPagoReserva({ sala_id, fecha, hora, duracionHoras }) {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('No autenticado')
+
+  const reserva = await crearReserva({ sala_id, fecha, hora, duracionHoras })
+
+  return crearCheckout({
+    tipo: 'reserva',
+    id: reserva.id,
+    items: [{
+      nombre:   `Reserva sala · ${new Date(reserva.inicio).toLocaleDateString('es-ES')}`,
+      precio:   reserva.total,
+      cantidad: 1,
+    }],
+    user,
+  })
 }

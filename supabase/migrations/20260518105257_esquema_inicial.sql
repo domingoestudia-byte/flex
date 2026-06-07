@@ -1,13 +1,14 @@
 create extension if not exists btree_gist;
 
 create table public.perfiles (
-  id         uuid primary key references auth.users(id) on delete cascade,
-  nombre     text,
-  rol        text not null default 'cliente'
-             check (rol in ('cliente', 'staff', 'admin', 'portero')),
-  avatar_url text,
-  activo boolean not null default true,
-  creado_en  timestamptz not null default now()
+  id                 uuid primary key references auth.users(id) on delete cascade,
+  nombre             text,
+  rol                text not null default 'cliente'
+                     check (rol in ('cliente', 'staff', 'admin', 'portero')),
+  avatar_url         text,
+  activo             boolean not null default true,
+  stripe_customer_id text,
+  creado_en          timestamptz not null default now()
 );
 
 
@@ -56,14 +57,18 @@ create table public.productos (
 );
 
 create table public.pedidos (
-  id          bigserial primary key,
-  mesa_id     int references public.mesas(id),
-  cliente_id  uuid references public.perfiles(id),
-  estado      text not null default 'pendiente'
-              check (estado in ('pendiente','en_barra','listo','entregado','cancelado')),
-  total       numeric(8,2),
-  creado_en   timestamptz not null default now(),
-  actualizado timestamptz not null default now()
+  id             bigserial primary key,
+  mesa_id        int references public.mesas(id),
+  cliente_id     uuid references public.perfiles(id),
+  estado         text not null default 'pendiente'
+                 check (estado in ('pendiente','en_barra','listo','entregado','cancelado')),
+  estado_pago    text not null default 'pendiente'
+                 check (estado_pago in ('pendiente','pagado','cancelado')),
+  total          numeric(8,2),
+  stripe_session text,
+  stripe_payment text,
+  creado_en      timestamptz not null default now(),
+  actualizado    timestamptz not null default now()
 );
 
 create table public.pedido_items (
@@ -97,6 +102,8 @@ insert into public.salas_vip (nombre, descripcion, capacidad, precio_hora) value
   fin             timestamptz not null,
   estado          text not null default 'pendiente'
                   check (estado in ('pendiente','pagada','cancelada','completada')),
+  estado_pago     text not null default 'pendiente'
+                  check (estado_pago in ('pendiente','pagado','cancelado')),
   stripe_session  text,
   stripe_payment  text,
   qr_token        text unique,
